@@ -4,6 +4,7 @@ import AboutUs from './AboutUs.jsx'
 import SignUp from './SignUp.jsx'
 import Login from './Login.jsx'
 import Home from './Home.jsx'
+import Community from './Community.jsx'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route path="/signup" element={<SignUp />} />
       <Route path="/login" element={<Login />} />
       <Route path="/home" element={<Home />} />
+      <Route path="/community" element={<Community />} />
     </Routes>
   )
 }
