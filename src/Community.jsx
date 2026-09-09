@@ -11,6 +11,9 @@ const GROUP_ID = 'web-design'
 const GROUP_NAME = 'Web Development'
 const GROUP_DESC = 'Learn and build websites together.'
 
+const CLOUDINARY_CLOUD_NAME = 'z6rnow5n'
+const CLOUDINARY_UPLOAD_PRESET = 'abugidatech_uploads'
+
 function Community() {
   const [user, setUser] = useState(null)
   const [isMember, setIsMember] = useState(false)
@@ -19,6 +22,7 @@ function Community() {
   const [posts, setPosts] = useState([])
   const [newPost, setNewPost] = useState('')
   const [posting, setPosting] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const messagesEndRef = useRef(null)
 
@@ -99,6 +103,40 @@ function Community() {
     setPosting(false)
   }
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file || !user) return
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
+
+      const resourceType = file.type.startsWith('image/') ? 'image' : 'raw'
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+        { method: 'POST', body: formData }
+      )
+      const data = await res.json()
+
+      await addDoc(collection(db, 'posts'), {
+        groupId: GROUP_ID,
+        authorId: user.uid,
+        authorName: user.displayName || 'Member',
+        content: '',
+        fileUrl: data.secure_url,
+        fileType: file.type.startsWith('image/') ? 'image' : 'file',
+        fileName: file.name,
+        createdAt: new Date().toISOString(),
+      })
+    } catch (err) {
+      console.error('Upload failed:', err)
+    }
+    setUploading(false)
+  }
+
   if (loading) {
     return (
       <div className="dark">
@@ -165,7 +203,15 @@ function Community() {
                       {post.authorName}
                     </p>
                   )}
-                  <p>{post.content}</p>
+                  {post.fileType === 'image' && (
+                    <img src={post.fileUrl} alt="Shared" className="rounded-lg max-w-full mb-1" />
+                  )}
+                  {post.fileType === 'file' && (
+                    <a href={post.fileUrl} target="_blank" rel="noopener noreferrer"className="underline text-sm">
+                       {post.fileName}
+                    </a>
+                  )}
+                  {post.content && <p>{post.content}</p>}
                 </div>
               )
             })}
@@ -175,22 +221,36 @@ function Community() {
           {/* Fixed Input Bar */}
           <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a14] px-4 md:px-8 py-3">
             {isMember ? (
-              <form onSubmit={handlePostSubmit} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newPost}
-                  onChange={(e) => setNewPost(e.target.value)}
-                  placeholder="Message..."
-                  className="flex-1 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#151225] rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white"
-                />
-                <button
-                  type="submit"
-                  disabled={posting || !newPost.trim()}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2 rounded-full transition disabled:opacity-50"
-                >
-                  Send
-                </button>
-              </form>
+              <>
+                <form onSubmit={handlePostSubmit} className="flex items-center gap-2">
+                  <label className="cursor-pointer text-xl px-2">
+                    📎
+                    <input
+                      type="file"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx"
+                    />
+                  </label>
+                  <input
+                    type="text"
+                    value={newPost}
+                    onChange={(e) => setNewPost(e.target.value)}
+                    placeholder="Message..."
+                    className="flex-1 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#151225] rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white"
+                  />
+                  <button
+                    type="submit"
+                    disabled={posting || !newPost.trim()}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2 rounded-full transition disabled:opacity-50"
+                  >
+                    Send
+                  </button>
+                </form>
+                {uploading && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Uploading...</p>
+                )}
+              </>
             ) : (
               <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
                 Join the group to send messages.
