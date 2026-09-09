@@ -5,6 +5,7 @@ import SignUp from './SignUp.jsx'
 import Login from './Login.jsx'
 import Home from './Home.jsx'
 import Community from './Community.jsx'
+import Profile from './Profile.jsx'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/home" element={<Home />} />
       <Route path="/community" element={<Community />} />
+      <Route path="/profile" element={<Profile />} />
     </Routes>
   )
 }

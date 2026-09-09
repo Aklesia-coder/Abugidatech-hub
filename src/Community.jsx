@@ -139,124 +139,120 @@ function Community() {
 
   if (loading) {
     return (
-      <div className="dark">
-        <div className="flex min-h-screen bg-white dark:bg-[#0a0a14] text-gray-900 dark:text-white">
-          <Sidebar />
-          <div className="flex-1 flex items-center justify-center">Loading...</div>
-        </div>
+      <div className="flex min-h-screen bg-white dark:bg-[#0a0a14] text-gray-900 dark:text-white">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="dark">
-      <div className="flex h-screen bg-white dark:bg-[#0a0a14] transition-colors duration-300">
-        <Sidebar />
+    <div className="flex h-screen bg-white dark:bg-[#0a0a14] transition-colors duration-300">
+      <Sidebar />
 
-        {/* Chat Column */}
-        <div className="flex-1 flex flex-col h-screen pb-16 md:pb-0">
-          
-          {/* Header */}
-          <div
-            onClick={() => setShowMembers(true)}
-            className="cursor-pointer flex items-center gap-3 px-4 md:px-8 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a14]"
-          >
-            <div className="w-10 h-10 rounded-full bg-purple-200 dark:bg-purple-900/40 flex items-center justify-center text-xl">
-              💻
-            </div>
-            <div>
-              <p className="font-bold text-gray-900 dark:text-white">{GROUP_NAME}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {members.length} {members.length === 1 ? 'member' : 'members'}
-              </p>
-            </div>
-            {!isMember && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleJoinToggle() }}
-                className="ml-auto bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+      {/* Chat Column */}
+      <div className="flex-1 flex flex-col h-screen pb-16 md:pb-0">
+        
+        {/* Header */}
+        <div
+          onClick={() => setShowMembers(true)}
+          className="cursor-pointer flex items-center gap-3 px-4 md:px-8 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a14]"
+        >
+          <div className="w-10 h-10 rounded-full bg-purple-200 dark:bg-purple-900/40 flex items-center justify-center text-xl">
+            💻
+          </div>
+          <div>
+            <p className="font-bold text-gray-900 dark:text-white">{GROUP_NAME}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {members.length} {members.length === 1 ? 'member' : 'members'}
+            </p>
+          </div>
+          {!isMember && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleJoinToggle() }}
+              className="ml-auto bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+            >
+              Join
+            </button>
+          )}
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 flex flex-col gap-3">
+          {posts.length === 0 && (
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
+              No messages yet. Be the first to share something!
+            </p>
+          )}
+          {posts.map((post) => {
+            const isMe = post.authorId === user?.uid
+            return (
+              <div
+                key={post.id}
+                className={`max-w-[75%] px-4 py-2 rounded-2xl ${
+                  isMe
+                    ? 'ml-auto bg-purple-600 text-white rounded-br-sm'
+                    : 'bg-gray-100 dark:bg-[#151225] text-gray-800 dark:text-gray-200 rounded-bl-sm'
+                }`}
               >
-                Join
-              </button>
-            )}
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 flex flex-col gap-3">
-            {posts.length === 0 && (
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
-                No messages yet. Be the first to share something!
-              </p>
-            )}
-            {posts.map((post) => {
-              const isMe = post.authorId === user?.uid
-              return (
-                <div
-                  key={post.id}
-                  className={`max-w-[75%] px-4 py-2 rounded-2xl ${
-                    isMe
-                      ? 'ml-auto bg-purple-600 text-white rounded-br-sm'
-                      : 'bg-gray-100 dark:bg-[#151225] text-gray-800 dark:text-gray-200 rounded-bl-sm'
-                  }`}
-                >
-                  {!isMe && (
-                    <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-1">
-                      {post.authorName}
-                    </p>
-                  )}
-                  {post.fileType === 'image' && (
-                    <img src={post.fileUrl} alt="Shared" className="rounded-lg max-w-full mb-1" />
-                  )}
-                  {post.fileType === 'file' && (
-                    <a href={post.fileUrl} target="_blank" rel="noopener noreferrer"className="underline text-sm">
-                       {post.fileName}
-                    </a>
-                  )}
-                  {post.content && <p>{post.content}</p>}
-                </div>
-              )
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Fixed Input Bar */}
-          <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a14] px-4 md:px-8 py-3">
-            {isMember ? (
-              <>
-                <form onSubmit={handlePostSubmit} className="flex items-center gap-2">
-                  <label className="cursor-pointer text-xl px-2">
-                    📎
-                    <input
-                      type="file"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      accept="image/*,.pdf,.doc,.docx"
-                    />
-                  </label>
-                  <input
-                    type="text"
-                    value={newPost}
-                    onChange={(e) => setNewPost(e.target.value)}
-                    placeholder="Message..."
-                    className="flex-1 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#151225] rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white"
-                  />
-                  <button
-                    type="submit"
-                    disabled={posting || !newPost.trim()}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2 rounded-full transition disabled:opacity-50"
-                  >
-                    Send
-                  </button>
-                </form>
-                {uploading && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Uploading...</p>
+                {!isMe && (
+                  <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-1">
+                    {post.authorName}
+                  </p>
                 )}
-              </>
-            ) : (
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
-                Join the group to send messages.
-              </p>
-            )}
-          </div>
+                {post.fileType === 'image' && (
+                  <img src={post.fileUrl} alt="Shared" className="rounded-lg max-w-full mb-1" />
+                )}
+                {post.fileType === 'file' && (
+                  <a href={post.fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-sm">
+                    📎 {post.fileName}
+                  </a>
+                )}
+                {post.content && <p>{post.content}</p>}
+              </div>
+            )
+          })}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Fixed Input Bar */}
+        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a14] px-4 md:px-8 py-3">
+          {isMember ? (
+            <>
+              <form onSubmit={handlePostSubmit} className="flex items-center gap-2">
+                <label className="cursor-pointer text-xl px-2">
+                  📎
+                  <input
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    accept="image/*,.pdf,.doc,.docx"
+                  />
+                </label>
+                <input
+                  type="text"
+                  value={newPost}
+                  onChange={(e) => setNewPost(e.target.value)}
+                  placeholder="Message..."
+                  className="flex-1 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#151225] rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white"
+                />
+                <button
+                  type="submit"
+                  disabled={posting || !newPost.trim()}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2 rounded-full transition disabled:opacity-50"
+                >
+                  Send
+                </button>
+              </form>
+              {uploading && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Uploading...</p>
+              )}
+            </>
+          ) : (
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
+              Join the group to send messages.
+            </p>
+          )}
         </div>
       </div>
 
