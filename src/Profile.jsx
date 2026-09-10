@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, updateDoc, collection, addDoc, query, where, onSnapshot, deleteDoc } from 'firebase/firestore'
+import {
+  doc, getDoc, updateDoc, collection, addDoc, query, where,
+  onSnapshot, deleteDoc, arrayUnion, arrayRemove
+} from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Sidebar from './Sidebar.jsx'
 
@@ -107,10 +110,12 @@ function Profile() {
 
       await addDoc(collection(db, 'projects'), {
         userId: user.uid,
+        authorName: user.displayName || 'Member',
         title: projectTitle.trim(),
         description: projectDesc.trim(),
         fileUrl,
         fileType,
+        likes: [],
         createdAt: new Date().toISOString(),
       })
 
@@ -126,6 +131,18 @@ function Profile() {
 
   const handleProjectDelete = async (projectId) => {
     await deleteDoc(doc(db, 'projects', projectId))
+  }
+
+  const handleLikeToggle = async (project) => {
+    if (!user) return
+    const projectRef = doc(db, 'projects', project.id)
+    const hasLiked = project.likes?.includes(user.uid)
+
+    if (hasLiked) {
+      await updateDoc(projectRef, { likes: arrayRemove(user.uid) })
+    } else {
+      await updateDoc(projectRef, { likes: arrayUnion(user.uid) })
+    }
   }
 
   if (loading) {
@@ -167,7 +184,6 @@ function Profile() {
             </div>
           </div>
 
-          {/* Photo controls */}
           <div className="flex gap-2 mb-5">
             <label className="cursor-pointer text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-2 rounded-lg transition">
               {uploadingPhoto ? 'Uploading...' : 'Change Photo'}
@@ -183,7 +199,6 @@ function Profile() {
             )}
           </div>
 
-          {/* Bio */}
           <div className="mb-5">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Bio</p>
             {editingBio ? (
@@ -218,7 +233,6 @@ function Profile() {
             )}
           </div>
 
-          {/* Stats */}
           <div className="flex flex-col gap-2 text-sm border-t border-gray-200 dark:border-gray-800 pt-4">
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Points</span>
@@ -290,29 +304,42 @@ function Profile() {
                 No projects yet. Share what you've built!
               </p>
             )}
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className="bg-white dark:bg-[#151225] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden"
-              >
-                {project.fileType === 'image' && (
-                  <img src={project.fileUrl} alt={project.title} className="w-full h-40 object-cover" />
-                )}
-                {project.fileType === 'video' && (
-                  <video src={project.fileUrl} controls className="w-full h-40 object-cover" />
-                )}
-                <div className="p-4">
-                  <p className="font-semibold mb-1">{project.title}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{project.description}</p>
-                  <button
-                    onClick={() => handleProjectDelete(project.id)}
-                    className="text-xs text-red-500 font-semibold"
-                  >
-                    Delete
-                  </button>
+            {projects.map((project) => {
+              const hasLiked = project.likes?.includes(user?.uid)
+              return (
+                <div
+                  key={project.id}
+                  className="bg-white dark:bg-[#151225] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden"
+                >
+                  {project.fileType === 'image' && (
+                    <img src={project.fileUrl} alt={project.title} className="w-full h-40 object-cover" />
+                  )}
+                  {project.fileType === 'video' && (
+                    <video src={project.fileUrl} controls className="w-full h-40 object-cover" />
+                  )}
+                  <div className="p-4">
+                    <p className="font-semibold mb-1">{project.title}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{project.description}</p>
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => handleLikeToggle(project)}
+                        className={`text-sm font-semibold flex items-center gap-1 ${
+                          hasLiked ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        {hasLiked ? '❤️' : '🤍'} {project.likes?.length || 0}
+                      </button>
+                      <button
+                        onClick={() => handleProjectDelete(project.id)}
+                        className="text-xs text-red-500 font-semibold"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>

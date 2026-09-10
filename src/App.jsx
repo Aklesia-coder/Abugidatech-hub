@@ -6,6 +6,7 @@ import Login from './Login.jsx'
 import Home from './Home.jsx'
 import Community from './Community.jsx'
 import Profile from './Profile.jsx'
+import ViewProfile from './ViewProfile.jsx'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <Route path="/home" element={<Home />} />
       <Route path="/community" element={<Community />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/user/:userId" element={<ViewProfile />} />
     </Routes>
   )
 }
