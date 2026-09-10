@@ -40,7 +40,7 @@ function SignUp() {
         fullName,
         username,
         email,
-        points: 0,
+        points: 15,
         createdAt: new Date().toISOString(),
       })
 
@@ -71,7 +71,6 @@ function SignUp() {
         <div className="flex-1 flex items-center justify-center px-4 py-8">
           <div className="w-full max-w-4xl bg-purple-50 dark:bg-[#12101f] rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row">
             
-            {/* Left panel */}
             <div className="bg-purple-100 dark:bg-[#1a1730] p-8 md:w-2/5 flex flex-col justify-center">
               <h2 className="text-2xl font-bold mb-2">Create your account</h2>
               <p className="text-gray-600 dark:text-gray-300">
@@ -79,7 +78,6 @@ function SignUp() {
               </p>
             </div>
 
-            {/* Right panel - form */}
             <div className="p-8 md:w-3/5">
               <form onSubmit={handleSignUp} className="flex flex-col gap-4">
                 {error && (

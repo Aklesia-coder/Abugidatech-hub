@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import {
   doc, getDoc, updateDoc, collection, addDoc, query, where,
-  onSnapshot, deleteDoc, arrayUnion, arrayRemove
+  onSnapshot, deleteDoc, arrayUnion, arrayRemove, increment
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Sidebar from './Sidebar.jsx'
@@ -119,6 +119,9 @@ function Profile() {
         createdAt: new Date().toISOString(),
       })
 
+      await updateDoc(doc(db, 'users', user.uid), { points: increment(10) })
+      setProfileData((prev) => ({ ...prev, points: (prev?.points ?? 0) + 10 }))
+
       setProjectTitle('')
       setProjectDesc('')
       setProjectFile(null)
@@ -136,12 +139,15 @@ function Profile() {
   const handleLikeToggle = async (project) => {
     if (!user) return
     const projectRef = doc(db, 'projects', project.id)
+    const ownerRef = doc(db, 'users', project.userId)
     const hasLiked = project.likes?.includes(user.uid)
 
     if (hasLiked) {
       await updateDoc(projectRef, { likes: arrayRemove(user.uid) })
+      await updateDoc(ownerRef, { points: increment(-5) })
     } else {
       await updateDoc(projectRef, { likes: arrayUnion(user.uid) })
+      await updateDoc(ownerRef, { points: increment(5) })
     }
   }
 
@@ -160,7 +166,6 @@ function Profile() {
       <div className="flex-1 px-6 md:px-12 py-10 pb-24 md:pb-10 text-gray-900 dark:text-white">
         <h1 className="text-2xl md:text-3xl font-bold mb-6">My Profile</h1>
 
-        {/* Profile Card */}
         <div className="max-w-md bg-purple-50 dark:bg-[#12101f] border border-purple-200 dark:border-purple-900 rounded-xl p-6 mb-8">
           <div className="flex items-center gap-4 mb-4">
             <div className="relative">
@@ -247,7 +252,6 @@ function Profile() {
           </div>
         </div>
 
-        {/* Projects Section */}
         <div className="max-w-2xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">My Projects</h2>
@@ -293,7 +297,7 @@ function Profile() {
                 disabled={uploadingProject}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg transition disabled:opacity-50"
               >
-                {uploadingProject ? 'Uploading...' : 'Post Project'}
+                {uploadingProject ? 'Uploading...' : 'Post Project (+10 points)'}
               </button>
             </form>
           )}

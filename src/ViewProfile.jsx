@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, collection, query, where, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
+import {
+  doc, getDoc, collection, query, where, onSnapshot,
+  updateDoc, arrayUnion, arrayRemove, increment
+} from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Sidebar from './Sidebar.jsx'
 
@@ -41,12 +44,15 @@ function ViewProfile() {
   const handleLikeToggle = async (project) => {
     if (!currentUser) return
     const projectRef = doc(db, 'projects', project.id)
+    const ownerRef = doc(db, 'users', project.userId)
     const hasLiked = project.likes?.includes(currentUser.uid)
 
     if (hasLiked) {
       await updateDoc(projectRef, { likes: arrayRemove(currentUser.uid) })
+      await updateDoc(ownerRef, { points: increment(-5) })
     } else {
       await updateDoc(projectRef, { likes: arrayUnion(currentUser.uid) })
+      await updateDoc(ownerRef, { points: increment(5) })
     }
   }
 

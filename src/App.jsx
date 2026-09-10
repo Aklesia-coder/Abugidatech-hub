@@ -7,6 +7,7 @@ import Home from './Home.jsx'
 import Community from './Community.jsx'
 import Profile from './Profile.jsx'
 import ViewProfile from './ViewProfile.jsx'
+import Rewards from './Rewards.jsx'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <Route path="/community" element={<Community />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/user/:userId" element={<ViewProfile />} />
+      <Route path="/rewards" element={<Rewards />} />
     </Routes>
   )
 }
