@@ -2,8 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 import {
-  doc, getDoc, setDoc, deleteDoc, updateDoc, collection, getDocs,
-  addDoc, query, where, orderBy, onSnapshot
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import Sidebar from './Sidebar.jsx'
@@ -12,13 +22,17 @@ const GROUP_ID = 'web-design'
 const GROUP_NAME = 'Web Development'
 const GROUP_DESC = 'Learn and build websites together.'
 
+const FOUNDER_EMAIL = 'elohe996@gmail.com'
+
 const CLOUDINARY_CLOUD_NAME = 'z6rnow5n'
 const CLOUDINARY_UPLOAD_PRESET = 'abugidatech_uploads'
 
 function Community() {
   const navigate = useNavigate()
+
   const [user, setUser] = useState(null)
   const [isMember, setIsMember] = useState(false)
+  const [isFounder, setIsFounder] = useState(false)
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [posts, setPosts] = useState([])
@@ -30,17 +44,30 @@ function Community() {
   const [replyingTo, setReplyingTo] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editText, setEditText] = useState('')
+  const [removingMemberId, setRemovingMemberId] = useState(null)
+
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser)
+
       if (currentUser) {
+        setIsFounder(
+          currentUser.email?.toLowerCase() === FOUNDER_EMAIL.toLowerCase()
+        )
+
         await checkMembership(currentUser.uid)
         await loadMembers()
+      } else {
+        setIsFounder(false)
+        setIsMember(false)
+        setMembers([])
       }
+
       setLoading(false)
     })
+
     return () => unsubscribe()
   }, [])
 
@@ -50,10 +77,16 @@ function Community() {
       where('groupId', '==', GROUP_ID),
       orderBy('createdAt', 'asc')
     )
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsList = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      const postsList = snapshot.docs.map((postDoc) => ({
+        id: postDoc.id,
+        ...postDoc.data()
+      }))
+
       setPosts(postsList)
     })
+
     return () => unsubscribe()
   }, [])
 
@@ -62,21 +95,31 @@ function Community() {
   }, [posts])
 
   const checkMembership = async (uid) => {
-    const memberDoc = await getDoc(doc(db, 'groupMembers', `${GROUP_ID}_${uid}`))
+    const memberDoc = await getDoc(
+      doc(db, 'groupMembers', `${GROUP_ID}_${uid}`)
+    )
+
     setIsMember(memberDoc.exists())
   }
 
   const loadMembers = async () => {
     const membersSnapshot = await getDocs(collection(db, 'groupMembers'))
+
     const list = membersSnapshot.docs
       .map((d) => d.data())
       .filter((m) => m.groupId === GROUP_ID)
+
     setMembers(list)
   }
 
   const handleJoinToggle = async () => {
     if (!user) return
-    const memberRef = doc(db, 'groupMembers', `${GROUP_ID}_${user.uid}`)
+
+    const memberRef = doc(
+      db,
+      'groupMembers',
+      `${GROUP_ID}_${user.uid}`
+    )
 
     if (isMember) {
       await deleteDoc(memberRef)
@@ -86,48 +129,102 @@ function Community() {
         groupId: GROUP_ID,
         userId: user.uid,
         userName: user.displayName || 'Member',
-        joinedAt: new Date().toISOString(),
+        joinedAt: new Date().toISOString()
       })
+
       setIsMember(true)
     }
+
     await loadMembers()
+  }
+
+  // Founder-only member removal
+  const handleRemoveMember = async (member) => {
+    if (!user) return
+
+    // Frontend check for the UI.
+    // Firestore Rules below provide the real security.
+    if (user.email?.toLowerCase() !== FOUNDER_EMAIL.toLowerCase()) {
+      return
+    }
+
+    // Prevent founder from removing themselves
+    if (member.userId === user.uid) {
+      alert('You cannot remove yourself as the founder.')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Remove ${member.userName || 'this member'} from ${GROUP_NAME}?`
+    )
+
+    if (!confirmed) return
+
+    setRemovingMemberId(member.userId)
+
+    try {
+      await deleteDoc(
+        doc(db, 'groupMembers', `${GROUP_ID}_${member.userId}`)
+      )
+
+      await loadMembers()
+    } catch (error) {
+      console.error('Failed to remove member:', error)
+      alert('Could not remove this member. Please try again.')
+    } finally {
+      setRemovingMemberId(null)
+    }
   }
 
   const handlePostSubmit = async (e) => {
     e.preventDefault()
-    if (!newPost.trim() || !user) return
+
+    if (!newPost.trim() || !user || !isMember) return
 
     setPosting(true)
-    await addDoc(collection(db, 'posts'), {
-      groupId: GROUP_ID,
-      authorId: user.uid,
-      authorName: user.displayName || 'Member',
-      content: newPost.trim(),
-      createdAt: new Date().toISOString(),
-      replyTo: replyingTo
-        ? {
-            authorName: replyingTo.authorName,
-            content: replyingTo.content || (replyingTo.fileType ? '📎 Attachment' : ''),
-          }
-        : null,
-    })
-    setNewPost('')
-    setReplyingTo(null)
+
+    try {
+      await addDoc(collection(db, 'posts'), {
+        groupId: GROUP_ID,
+        authorId: user.uid,
+        authorName: user.displayName || 'Member',
+        content: newPost.trim(),
+        createdAt: new Date().toISOString(),
+        replyTo: replyingTo
+          ? {
+              authorName: replyingTo.authorName,
+              content:
+                replyingTo.content ||
+                (replyingTo.fileType ? '📎 Attachment' : '')
+            }
+          : null
+      })
+
+      setNewPost('')
+      setReplyingTo(null)
+    } catch (error) {
+      console.error('Post failed:', error)
+    }
+
     setPosting(false)
   }
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]
-    if (!file || !user) return
+
+    if (!file || !user || !isMember) return
 
     setUploading(true)
+
     try {
       const formData = new FormData()
+
       formData.append('file', file)
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
 
       let fileType = 'file'
       let resourceType = 'raw'
+
       if (file.type.startsWith('image/')) {
         fileType = 'image'
         resourceType = 'image'
@@ -138,9 +235,17 @@ function Community() {
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
-        { method: 'POST', body: formData }
+        {
+          method: 'POST',
+          body: formData
+        }
       )
+
       const data = await res.json()
+
+      if (!res.ok || !data.secure_url) {
+        throw new Error('Cloudinary upload failed')
+      }
 
       await addDoc(collection(db, 'posts'), {
         groupId: GROUP_ID,
@@ -150,17 +255,26 @@ function Community() {
         fileUrl: data.secure_url,
         fileType,
         fileName: file.name,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       })
     } catch (err) {
       console.error('Upload failed:', err)
+      alert('Upload failed. Please try again.')
     }
+
     setUploading(false)
+
+    // Allow selecting the same file again
+    e.target.value = ''
   }
 
   const handleDeleteMessage = async (postId) => {
-    await deleteDoc(doc(db, 'posts', postId))
-    setActiveMenuId(null)
+    try {
+      await deleteDoc(doc(db, 'posts', postId))
+      setActiveMenuId(null)
+    } catch (error) {
+      console.error('Delete failed:', error)
+    }
   }
 
   const startEdit = (post) => {
@@ -171,12 +285,18 @@ function Community() {
 
   const saveEdit = async (postId) => {
     if (!editText.trim()) return
-    await updateDoc(doc(db, 'posts', postId), {
-      content: editText.trim(),
-      edited: true,
-    })
-    setEditingId(null)
-    setEditText('')
+
+    try {
+      await updateDoc(doc(db, 'posts', postId), {
+        content: editText.trim(),
+        edited: true
+      })
+
+      setEditingId(null)
+      setEditText('')
+    } catch (error) {
+      console.error('Edit failed:', error)
+    }
   }
 
   const startReply = (post) => {
@@ -188,7 +308,9 @@ function Community() {
     return (
       <div className="flex min-h-screen bg-white dark:bg-[#0a0a14] text-gray-900 dark:text-white">
         <Sidebar />
-        <div className="flex-1 flex items-center justify-center">Loading...</div>
+        <div className="flex-1 flex items-center justify-center">
+          Loading...
+        </div>
       </div>
     )
   }
@@ -199,7 +321,7 @@ function Community() {
 
       {/* Chat Column */}
       <div className="flex-1 flex flex-col h-screen pb-16 md:pb-0">
-        
+
         {/* Header */}
         <div
           onClick={() => setShowMembers(true)}
@@ -208,15 +330,24 @@ function Community() {
           <div className="w-10 h-10 rounded-full bg-purple-200 dark:bg-purple-900/40 flex items-center justify-center text-xl">
             💻
           </div>
+
           <div>
-            <p className="font-bold text-gray-900 dark:text-white">{GROUP_NAME}</p>
+            <p className="font-bold text-gray-900 dark:text-white">
+              {GROUP_NAME}
+            </p>
+
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {members.length} {members.length === 1 ? 'member' : 'members'}
+              {members.length}{' '}
+              {members.length === 1 ? 'member' : 'members'}
             </p>
           </div>
+
           {!isMember && (
             <button
-              onClick={(e) => { e.stopPropagation(); handleJoinToggle() }}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleJoinToggle()
+              }}
               className="ml-auto bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
             >
               Join
@@ -226,20 +357,29 @@ function Community() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 flex flex-col gap-3">
+
           {posts.length === 0 && (
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
               No messages yet. Be the first to share something!
             </p>
           )}
+
           {posts.map((post) => {
             const isMe = post.authorId === user?.uid
             const isMenuOpen = activeMenuId === post.id
             const isEditing = editingId === post.id
 
             return (
-              <div key={post.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+              <div
+                key={post.id}
+                className={`flex flex-col ${
+                  isMe ? 'items-end' : 'items-start'
+                }`}
+              >
                 <div
-                  onClick={() => setActiveMenuId(isMenuOpen ? null : post.id)}
+                  onClick={() =>
+                    setActiveMenuId(isMenuOpen ? null : post.id)
+                  }
                   className={`max-w-[75%] rounded-2xl overflow-hidden cursor-pointer ${
                     isMe
                       ? 'bg-purple-600 text-white rounded-br-sm'
@@ -248,7 +388,10 @@ function Community() {
                 >
                   {!isMe && !post.fileType && (
                     <p
-                      onClick={(e) => { e.stopPropagation(); navigate(`/user/${post.authorId}`) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/user/${post.authorId}`)
+                      }}
                       className="text-xs font-semibold text-purple-600 dark:text-purple-400 px-4 pt-2 cursor-pointer hover:underline"
                     >
                       {post.authorName}
@@ -256,20 +399,44 @@ function Community() {
                   )}
 
                   {post.replyTo && (
-                    <div className={`mx-4 mt-2 mb-1 pl-2 border-l-2 text-xs opacity-80 ${isMe ? 'border-white' : 'border-purple-500'}`}>
-                      <p className="font-semibold">{post.replyTo.authorName}</p>
-                      <p className="truncate">{post.replyTo.content}</p>
+                    <div
+                      className={`mx-4 mt-2 mb-1 pl-2 border-l-2 text-xs opacity-80 ${
+                        isMe ? 'border-white' : 'border-purple-500'
+                      }`}
+                    >
+                      <p className="font-semibold">
+                        {post.replyTo.authorName}
+                      </p>
+
+                      <p className="truncate">
+                        {post.replyTo.content}
+                      </p>
                     </div>
                   )}
 
                   {post.fileType === 'image' && (
-                    <img src={post.fileUrl} alt="Shared" className="w-full block" />
+                    <img
+                      src={post.fileUrl}
+                      alt="Shared"
+                      className="w-full block"
+                    />
                   )}
+
                   {post.fileType === 'video' && (
-                    <video src={post.fileUrl} controls className="w-full block" />
+                    <video
+                      src={post.fileUrl}
+                      controls
+                      className="w-full block"
+                    />
                   )}
+
                   {post.fileType === 'file' && (
-                    <a href={post.fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-sm block px-4 py-2">
+                    <a
+                      href={post.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-sm block px-4 py-2"
+                    >
                       📎 {post.fileName}
                     </a>
                   )}
@@ -279,19 +446,29 @@ function Community() {
                       <input
                         type="text"
                         value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
+                        onChange={(e) =>
+                          setEditText(e.target.value)
+                        }
                         onClick={(e) => e.stopPropagation()}
                         className="rounded px-2 py-1 text-sm text-gray-900"
                       />
+
                       <div className="flex gap-2">
                         <button
-                          onClick={(e) => { e.stopPropagation(); saveEdit(post.id) }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            saveEdit(post.id)
+                          }}
                           className="text-xs font-semibold underline"
                         >
                           Save
                         </button>
+
                         <button
-                          onClick={(e) => { e.stopPropagation(); setEditingId(null) }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingId(null)
+                          }}
                           className="text-xs underline opacity-80"
                         >
                           Cancel
@@ -302,25 +479,44 @@ function Community() {
                     post.content && (
                       <p className="px-4 py-2">
                         {post.content}
-                        {post.edited && <span className="text-xs opacity-60 ml-2">(edited)</span>}
+
+                        {post.edited && (
+                          <span className="text-xs opacity-60 ml-2">
+                            (edited)
+                          </span>
+                        )}
                       </p>
                     )
                   )}
                 </div>
 
-                {/* Action menu */}
+                {/* Message Action Menu */}
                 {isMenuOpen && !isEditing && (
                   <div className="flex gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    <button onClick={() => startReply(post)} className="hover:underline">
+
+                    <button
+                      onClick={() => startReply(post)}
+                      className="hover:underline"
+                    >
                       ↩ Reply
                     </button>
+
                     {isMe && !post.fileType && (
-                      <button onClick={() => startEdit(post)} className="hover:underline">
+                      <button
+                        onClick={() => startEdit(post)}
+                        className="hover:underline"
+                      >
                         ✎ Edit
                       </button>
                     )}
+
                     {isMe && (
-                      <button onClick={() => handleDeleteMessage(post.id)} className="hover:underline text-red-500">
+                      <button
+                        onClick={() =>
+                          handleDeleteMessage(post.id)
+                        }
+                        className="hover:underline text-red-500"
+                      >
                         🗑 Delete
                       </button>
                     )}
@@ -329,31 +525,44 @@ function Community() {
               </div>
             )
           })}
+
           <div ref={messagesEndRef} />
         </div>
 
         {/* Fixed Input Bar */}
         <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a14] px-4 md:px-8 py-3">
+
           {isMember ? (
             <>
               {replyingTo && (
                 <div className="flex items-center justify-between bg-gray-100 dark:bg-[#151225] rounded-lg px-3 py-2 mb-2 text-sm">
+
                   <div>
                     <p className="font-semibold text-purple-600 dark:text-purple-400">
                       Replying to {replyingTo.authorName}
                     </p>
+
                     <p className="text-gray-600 dark:text-gray-400 truncate max-w-xs">
                       {replyingTo.content || '📎 Attachment'}
                     </p>
                   </div>
-                  <button onClick={() => setReplyingTo(null)} className="text-gray-500 dark:text-gray-400 px-2">
+
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    className="text-gray-500 dark:text-gray-400 px-2"
+                  >
                     ✕
                   </button>
                 </div>
               )}
-              <form onSubmit={handlePostSubmit} className="flex items-center gap-2">
+
+              <form
+                onSubmit={handlePostSubmit}
+                className="flex items-center gap-2"
+              >
                 <label className="cursor-pointer text-xl px-2">
                   📎
+
                   <input
                     type="file"
                     onChange={handleFileUpload}
@@ -361,13 +570,17 @@ function Community() {
                     accept="image/*,video/*,.pdf,.doc,.docx"
                   />
                 </label>
+
                 <input
                   type="text"
                   value={newPost}
-                  onChange={(e) => setNewPost(e.target.value)}
+                  onChange={(e) =>
+                    setNewPost(e.target.value)
+                  }
                   placeholder="Message..."
                   className="flex-1 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#151225] rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white"
                 />
+
                 <button
                   type="submit"
                   disabled={posting || !newPost.trim()}
@@ -376,8 +589,11 @@ function Community() {
                   Send
                 </button>
               </form>
+
               {uploading && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Uploading...</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Uploading...
+                </p>
               )}
             </>
           ) : (
@@ -388,18 +604,22 @@ function Community() {
         </div>
       </div>
 
-      {/* Members Panel (slide-over) */}
+      {/* Members Panel */}
       {showMembers && (
         <div className="fixed inset-0 z-50 flex justify-end">
+
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowMembers(false)}
           ></div>
+
           <div className="relative w-full max-w-xs bg-white dark:bg-[#0a0a14] h-full p-6 overflow-y-auto">
+
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-bold text-lg text-gray-900 dark:text-white">
                 {GROUP_NAME}
               </h2>
+
               <button
                 onClick={() => setShowMembers(false)}
                 className="text-gray-500 dark:text-gray-400 text-xl"
@@ -407,11 +627,17 @@ function Community() {
                 ✕
               </button>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">{GROUP_DESC}</p>
+
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+              {GROUP_DESC}
+            </p>
 
             {isMember && (
               <button
-                onClick={() => { handleJoinToggle(); setShowMembers(false) }}
+                onClick={() => {
+                  handleJoinToggle()
+                  setShowMembers(false)
+                }}
                 className="w-full mb-6 border border-red-400 text-red-500 font-semibold py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition"
               >
                 Leave Group
@@ -419,21 +645,62 @@ function Community() {
             )}
 
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase">
-              {members.length} {members.length === 1 ? 'Member' : 'Members'}
+              {members.length}{' '}
+              {members.length === 1 ? 'Member' : 'Members'}
             </p>
+
             <div className="flex flex-col gap-3">
-              {members.map((m) => (
-                <div
-                  key={m.userId}
-                  onClick={() => navigate(`/user/${m.userId}`)}
-                  className="flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 -mx-2"
-                >
-                  <div className="w-9 h-9 rounded-full bg-purple-200 dark:bg-purple-900/40 flex items-center justify-center text-sm font-bold text-purple-700 dark:text-purple-300">
-                    {m.userName.charAt(0).toUpperCase()}
+
+              {members.map((m) => {
+                const isCurrentUser = m.userId === user?.uid
+                const isBeingRemoved =
+                  removingMemberId === m.userId
+
+                return (
+                  <div
+                    key={m.userId}
+                    className="flex items-center gap-3 rounded-lg p-2 -mx-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <div
+                      onClick={() =>
+                        navigate(`/user/${m.userId}`)
+                      }
+                      className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                    >
+                      <div className="w-9 h-9 flex-shrink-0 rounded-full bg-purple-200 dark:bg-purple-900/40 flex items-center justify-center text-sm font-bold text-purple-700 dark:text-purple-300">
+                        {(m.userName || 'M')
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+
+                      <span className="text-gray-800 dark:text-gray-200 text-sm truncate">
+                        {m.userName || 'Member'}
+                      </span>
+
+                      {isCurrentUser && (
+                        <span className="text-xs text-gray-400">
+                          You
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Founder-only Remove button */}
+                    {isFounder && !isCurrentUser && (
+                      <button
+                        onClick={() =>
+                          handleRemoveMember(m)
+                        }
+                        disabled={isBeingRemoved}
+                        className="text-xs text-red-500 hover:text-red-700 font-semibold disabled:opacity-50"
+                      >
+                        {isBeingRemoved
+                          ? 'Removing...'
+                          : 'Remove'}
+                      </button>
+                    )}
                   </div>
-                  <span className="text-gray-800 dark:text-gray-200 text-sm">{m.userName}</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
