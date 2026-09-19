@@ -11,7 +11,7 @@ import Sidebar from './Sidebar.jsx'
 
 const FOUNDER_EMAIL = 'elohe996@gmail.com'
 const CLOUDINARY_CLOUD_NAME = 'z6rnow5n'
-const CLOUDINARY_UPLOAD_PRESET = 'abugidatech_uploads'
+const CLOUDINARY_UPLOAD_PRESET = 'abugida_uploads'
 
 function Home() {
   const [user, setUser] = useState(null)
@@ -56,7 +56,7 @@ function Home() {
         formData.append('file', taskFile)
         formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
         const res = await fetch(
-          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+          'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload',
           { method: 'POST', body: formData }
         )
         const data = await res.json()
@@ -260,7 +260,6 @@ function TaskCard({ task, user, isFounder }) {
         <p className="font-bold mb-1">{task.title}</p>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{task.description}</p>
 
-        {/* Like button */}
         <button
           onClick={handleLikeToggle}
           className={`text-sm font-semibold flex items-center gap-1 mb-4 ${
@@ -283,7 +282,9 @@ function TaskCard({ task, user, isFounder }) {
                 <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
                   {answer.userName}
                 </p>
-                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{answer.answer}</p>
+                <div className="max-h-40 overflow-y-auto bg-white dark:bg-[#0a0a14] rounded p-2 my-2 text-xs whitespace-pre-wrap break-words">
+                  {answer.answer}
+                </div>
                 {answer.reviewed ? (
                   <p className="text-xs text-green-600 dark:text-green-400 font-semibold">
                     ✓ Awarded {answer.points} points
@@ -312,7 +313,10 @@ function TaskCard({ task, user, isFounder }) {
           </div>
         ) : myAnswer ? (
           <div className="bg-purple-50 dark:bg-[#12101f] rounded-lg p-3 text-sm mb-4">
-            <p className="text-gray-700 dark:text-gray-300 mb-1">Your answer: {myAnswer.answer}</p>
+            <p className="text-gray-700 dark:text-gray-300 mb-1 font-semibold">Your answer:</p>
+            <div className="max-h-40 overflow-y-auto bg-white dark:bg-[#0a0a14] rounded p-2 mb-2 text-xs whitespace-pre-wrap break-words">
+              {myAnswer.answer}
+            </div>
             {myAnswer.reviewed ? (
               <p className="text-green-600 dark:text-green-400 font-semibold text-xs">
                 ✓ Reviewed — {myAnswer.points} points awarded
@@ -340,7 +344,6 @@ function TaskCard({ task, user, isFounder }) {
           </form>
         )}
 
-        {/* Comments */}
         <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
             Comments ({comments.length})
