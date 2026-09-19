@@ -89,9 +89,9 @@ function Home() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-[#0a0a14] transition-colors duration-300">
+    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-white dark:bg-[#0a0a14] transition-colors duration-300">
       <Sidebar />
-      <div className="flex-1 px-6 md:px-12 py-10 pb-24 md:pb-10 text-gray-900 dark:text-white">
+      <div className="flex-1 min-w-0 max-w-full overflow-x-hidden px-6 md:px-12 py-10 pb-24 md:pb-10 text-gray-900 dark:text-white">
         <h1 className="text-2xl md:text-3xl font-bold mb-2">
           Welcome, {user.displayName || 'friend'}! 👋
         </h1>
@@ -139,7 +139,7 @@ function Home() {
           </form>
         )}
 
-        <div className="max-w-xl flex flex-col gap-4">
+        <div className="max-w-xl w-full flex flex-col gap-4">
           <h2 className="text-xl font-bold">📋 Tasks</h2>
           {tasks.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">No tasks posted yet.</p>
@@ -252,13 +252,13 @@ function TaskCard({ task, user, isFounder }) {
   }
 
   return (
-    <div className="bg-white dark:bg-[#151225] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+    <div className="bg-white dark:bg-[#151225] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden w-full max-w-full">
       {task.imageUrl && (
         <img src={task.imageUrl} alt={task.title} className="w-full max-h-72 object-cover" />
       )}
-      <div className="p-5">
-        <p className="font-bold mb-1">{task.title}</p>
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{task.description}</p>
+      <div className="p-5 w-full max-w-full overflow-hidden">
+        <p className="font-bold mb-1 break-words">{task.title}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 break-words whitespace-pre-wrap">{task.description}</p>
 
         <button
           onClick={handleLikeToggle}
@@ -278,8 +278,8 @@ function TaskCard({ task, user, isFounder }) {
               <p className="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
             )}
             {allAnswers.map((answer) => (
-              <div key={answer.id} className="bg-purple-50 dark:bg-[#12101f] rounded-lg p-3">
-                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+              <div key={answer.id} className="bg-purple-50 dark:bg-[#12101f] rounded-lg p-3 w-full max-w-full overflow-hidden">
+                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 break-words">
                   {answer.userName}
                 </p>
                 <div className="max-h-40 overflow-y-auto bg-white dark:bg-[#0a0a14] rounded p-2 my-2 text-xs whitespace-pre-wrap break-words">
@@ -312,7 +312,7 @@ function TaskCard({ task, user, isFounder }) {
             ))}
           </div>
         ) : myAnswer ? (
-          <div className="bg-purple-50 dark:bg-[#12101f] rounded-lg p-3 text-sm mb-4">
+          <div className="bg-purple-50 dark:bg-[#12101f] rounded-lg p-3 text-sm mb-4 w-full max-w-full overflow-hidden">
             <p className="text-gray-700 dark:text-gray-300 mb-1 font-semibold">Your answer:</p>
             <div className="max-h-40 overflow-y-auto bg-white dark:bg-[#0a0a14] rounded p-2 mb-2 text-xs whitespace-pre-wrap break-words">
               {myAnswer.answer}
@@ -344,13 +344,13 @@ function TaskCard({ task, user, isFounder }) {
           </form>
         )}
 
-        <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
+        <div className="border-t border-gray-200 dark:border-gray-800 pt-3 w-full max-w-full overflow-hidden">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
             Comments ({comments.length})
           </p>
           <div className="flex flex-col gap-2 mb-3 max-h-48 overflow-y-auto">
             {comments.map((c) => (
-              <div key={c.id} className="text-sm">
+              <div key={c.id} className="text-sm break-words">
                 <span className="font-semibold text-purple-600 dark:text-purple-400">
                   {c.userName}:{' '}
                 </span>
@@ -364,12 +364,12 @@ function TaskCard({ task, user, isFounder }) {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Write a comment..."
-              className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0a0a14] rounded-full px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0a0a14] rounded-full px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
             <button
               type="submit"
               disabled={!commentText.trim()}
-              className="text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-1.5 rounded-full transition disabled:opacity-50"
+              className="text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-1.5 rounded-full transition disabled:opacity-50 shrink-0"
             >
               Post
             </button>
